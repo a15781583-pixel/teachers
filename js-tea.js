@@ -11,7 +11,7 @@ const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
    フォームフィールド一覧
 =========================== */
 const FIELD_IDS = [
-  'f-name', 'f-grade', 'f-period',
+  'f-name', 'f-grade', 
   'f-comp',
   'f-attitude',
   'f-goal', 'f-concerns', 'f-notes',
@@ -237,7 +237,6 @@ function buildFormData() {
   return {
     name:     getVal('f-name')     || '未入力',
     grade:    getVal('f-grade')    || '未入力',
-    period:   getVal('f-period')   || '未入力',
     subjects: [...selectedSubjects].join('、') || '未入力',
     scores:   scoresText,
     comp:     compVal ? `${compVal} / 10` : '未入力',
@@ -433,7 +432,6 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
 【生徒情報】
 名前: ${formData.name}
 学年: ${formData.grade}
-在籍期間: ${formData.period}
 担当科目: ${formData.subjects}
 最近のテスト結果: ${formData.scores}
 授業の理解度（10段階）: ${formData.comp}
