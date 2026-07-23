@@ -4,7 +4,7 @@
    ※ Google AI Studio で取得した APIキーを使用
    https://aistudio.google.com/app/apikey
 =========================== */
-const GEMINI_MODEL    = 'gemini-3.5-flash';
+const GEMINI_MODEL    = 'gemini-3.1-flash-lite';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 /* ===========================
