@@ -4,7 +4,7 @@
    ※ Google AI Studio で取得した APIキーを使用
    https://aistudio.google.com/app/apikey
 =========================== */
-const GEMINI_MODEL    = 'gemini-3.5-flash';
+const GEMINI_MODEL    = 'gemini-2.0-flash';   // ✅ 修正: gemini-3.5-flash は存在しないモデルでした
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 /* ===========================
@@ -131,6 +131,7 @@ function renderTabs() {
     const tab = document.createElement('button');
     tab.className = 'tab-item' + (i === currentIndex ? ' active' : '');
     tab.setAttribute('data-idx', i);
+    tab.type = 'button';
     tab.innerHTML = `
       <i class="ti ti-user-circle"></i>
       <span class="tab-label">${escapeHtml(s.tabName)}</span>
@@ -203,6 +204,20 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/* ===========================
+   エラー表示ヘルパー（✅ 追加: alert の代替）
+=========================== */
+function showInlineError(message) {
+  const errEl = document.getElementById('state-error');
+  errEl.innerHTML = `
+    <div class="error-box">
+      <i class="ti ti-alert-triangle"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  showState('state-error');
 }
 
 /* ===========================
@@ -322,6 +337,7 @@ function createTestEntryElement(test, idx) {
   const periodOpts = getPeriodOptions(test.type);
   const isCustom   = test.period === 'カスタム';
 
+  // ✅ 修正: chip ボタンに type="button" を追加（フォーム誤送信防止）
   div.innerHTML = `
     <div class="test-entry-header">
       <span class="test-entry-num">テスト ${idx + 1}</span>
@@ -334,7 +350,7 @@ function createTestEntryElement(test, idx) {
       <label class="test-field-label">試験の種類</label>
       <div class="chip-group test-type-chips">
         ${TEST_TYPES.map(t =>
-          `<button class="chip${t === test.type ? ' selected' : ''}" data-val="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+          `<button type="button" class="chip${t === test.type ? ' selected' : ''}" data-val="${escapeHtml(t)}">${escapeHtml(t)}</button>`
         ).join('')}
       </div>
     </div>
@@ -440,9 +456,13 @@ document.getElementById('test-add-btn').addEventListener('click', () => {
    AI診断レポートを生成する
 =========================== */
 document.getElementById('gen-btn').addEventListener('click', async () => {
-  const apiKey = getVal('api-key');
+  // ✅ 修正: alert() の代わりにページ内エラー表示（alert はブラウザ環境によってブロックされる場合がある）
+  const apiKey = document.getElementById('api-key')?.value.trim();
   if (!apiKey) {
-    alert('Google AI Studio の APIキーを入力してください。\nhttps://aistudio.google.com/app/apikey');
+    showInlineError(
+      'APIキーを入力してください。<br>' +
+      '<small><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color:inherit;">Google AI Studio で無料取得できます →</a></small>'
+    );
     return;
   }
 
@@ -510,17 +530,10 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
     showState('state-result');
 
   } catch (err) {
-    const errEl = document.getElementById('state-error');
-    errEl.innerHTML = `
-      <div class="error-box">
-        <i class="ti ti-alert-triangle"></i>
-        <span>
-          診断の生成に失敗しました。APIキーとネットワーク接続を確認してください。<br>
-          <small>${err.message}</small>
-        </span>
-      </div>
-    `;
-    showState('state-error');
+    showInlineError(
+      '診断の生成に失敗しました。APIキーとネットワーク接続を確認してください。<br>' +
+      `<small>${escapeHtml(err.message)}</small>`
+    );
 
   } finally {
     btn.disabled = false;
@@ -544,8 +557,8 @@ function renderResult(d, formData) {
     <div class="result-card card-hero">
       <div class="hero-row">
         <div>
-          <div class="hero-name">${formData.name} さん — AI診断レポート</div>
-          <div class="hero-sub">${subLine}</div>
+          <div class="hero-name">${escapeHtml(formData.name)} さん — AI診断レポート</div>
+          <div class="hero-sub">${escapeHtml(subLine)}</div>
         </div>
         <div>
           <div class="score-stars">${stars}</div>
@@ -597,7 +610,7 @@ function renderResult(d, formData) {
     <div class="result-card card-neutral">
       <div class="card-label"><i class="ti ti-mail"></i> 保護者向けコメント文案</div>
       <div class="parent-block" id="parent-text">${d.parentMessage || ''}</div>
-      <button class="copy-btn" id="copy-btn">
+      <button type="button" class="copy-btn" id="copy-btn">
         <i class="ti ti-copy"></i> コピー
       </button>
     </div>
