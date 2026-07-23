@@ -730,15 +730,10 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* テストエントリー内のチップ（少し小さめ） */
-.test-field .chip {
-  font-size: 11px;
-  padding: 3px 9px;
-}
-
-/* 実施時期：セレクト＋カスタム入力 */
-.test-period-select,
-.test-period-custom {
+/* テスト用入力フィールド（種類・学年・実施日） */
+.test-type-input,
+.test-grade-select,
+.test-date-input {
   width: 100%;
   font-family: 'Noto Sans JP', sans-serif;
   font-size: 12px;
@@ -751,16 +746,13 @@ body {
   outline: none;
 }
 
-.test-period-select:focus,
-.test-period-custom:focus {
+.test-type-input:focus,
+.test-grade-select:focus,
+.test-date-input:focus {
   border-color: #3b82f6;
 }
 
-.test-period-custom {
-  margin-top: 5px;
-}
-
-.test-period-custom::placeholder {
+.test-type-input::placeholder {
   color: #94a3b8;
 }
 
