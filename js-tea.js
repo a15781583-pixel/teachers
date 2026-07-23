@@ -257,58 +257,101 @@ function showState(id) {
 /* ===========================
    テストエントリー管理
 =========================== */
+/* ===========================
+   テストエントリー管理
+=========================== */
 
 function renderTestList(tests) {
   const list = document.getElementById('test-list');
   list.innerHTML = '';
-  tests.forEach((t, i) => list.appendChild(createTestEntryElement(t, i)));
+  tests.forEach((t, i) => {
+    const el = createTestEntryElement(t, i);
+    // 最後（最新）のエントリー以外は初期状態で折りたたむ
+    if (i !== tests.length - 1) {
+      el.classList.remove('is-open');
+    }
+    list.appendChild(el);
+  });
 }
 
 /** 1件のテストエントリー要素を生成してイベントをバインドする */
 function createTestEntryElement(test, idx) {
   const div      = document.createElement('div');
-  div.className  = 'test-entry';
+  // デフォルトで 'is-open' を付与して開いた状態にする
+  div.className  = 'test-entry is-open';
 
-  // 自由入力(サジェスト付き)、学年選択、カレンダー(date)を実装
+  // ヘッダーとコンテンツ（.test-entry-content）に分割
   div.innerHTML = `
-    <div class="test-entry-header">
-      <span class="test-entry-num">テスト ${idx + 1}</span>
+    <div class="test-entry-header" title="クリックで開閉">
+      <div class="test-header-left">
+        <i class="ti ti-chevron-down test-toggle-icon"></i>
+        <span class="test-entry-num">テスト ${idx + 1}</span>
+        <span class="test-preview"></span>
+      </div>
       <button class="test-remove-btn" type="button" title="このテストを削除">
         <i class="ti ti-trash"></i>
       </button>
     </div>
 
-    <div class="test-field">
-      <label class="test-field-label">試験の種類</label>
-      <input type="text" class="test-type-input" placeholder="例：全統記述模試、定期テスト" value="${escapeHtml(test.type || '')}" list="test-type-list-${idx}">
-      <datalist id="test-type-list-${idx}">
-        ${TEST_TYPE_SUGGESTIONS.map(t => `<option value="${escapeHtml(t)}"></option>`).join('')}
-      </datalist>
-    </div>
+    <div class="test-entry-content">
+      <div class="test-field">
+        <label class="test-field-label">試験の種類</label>
+        <input type="text" class="test-type-input" placeholder="例：全統記述模試、定期テスト" value="${escapeHtml(test.type || '')}" list="test-type-list-${idx}">
+        <datalist id="test-type-list-${idx}">
+          ${TEST_TYPE_SUGGESTIONS.map(t => `<option value="${escapeHtml(t)}"></option>`).join('')}
+        </datalist>
+      </div>
 
-    <div class="test-field">
-      <label class="test-field-label">模試対応学年</label>
-      <select class="test-grade-select">
-        <option value="">選択しない</option>
-        ${['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3','高卒・浪人'].map(g => 
-          `<option value="${g}" ${g === test.grade ? 'selected' : ''}>${g}</option>`
-        ).join('')}
-      </select>
-    </div>
+      <div class="test-field">
+        <label class="test-field-label">模試対応学年</label>
+        <select class="test-grade-select">
+          <option value="">選択しない</option>
+          ${['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3','高卒・浪人'].map(g => 
+            `<option value="${g}" ${g === test.grade ? 'selected' : ''}>${g}</option>`
+          ).join('')}
+        </select>
+      </div>
 
-    <div class="test-field">
-      <label class="test-field-label">実施日</label>
-      <input type="date" class="test-date-input" value="${escapeHtml(test.date || '')}">
-    </div>
+      <div class="test-field">
+        <label class="test-field-label">実施日</label>
+        <input type="date" class="test-date-input" value="${escapeHtml(test.date || '')}">
+      </div>
 
-    <div class="test-field">
-      <label class="test-field-label">点数・結果</label>
-      <textarea class="test-scores" placeholder="例：数学 75点、偏差値 55.2">${escapeHtml(test.scores || '')}</textarea>
+      <div class="test-field">
+        <label class="test-field-label">点数・結果</label>
+        <textarea class="test-scores" placeholder="例：数学 75点、偏差値 55.2">${escapeHtml(test.scores || '')}</textarea>
+      </div>
     </div>
   `;
 
+  // ── プレビューの更新処理 ──
+  const previewSpan = div.querySelector('.test-preview');
+  function updatePreview() {
+    const type = div.querySelector('.test-type-input').value.trim();
+    const scores = div.querySelector('.test-scores').value.trim();
+    let previewText = '';
+    if (type) previewText += type;
+    if (scores) previewText += (previewText ? ' - ' : '') + scores.replace(/\n/g, ' '); // 改行をスペースに
+    previewSpan.textContent = previewText || '(未入力)';
+  }
+
+  // 各入力項目の変更時にプレビューを更新
+  div.querySelectorAll('.test-type-input, .test-scores').forEach(el => {
+    el.addEventListener('input', updatePreview);
+  });
+  updatePreview(); // 初期化時に一度実行
+
+  // ── 開閉処理 ──
+  const header = div.querySelector('.test-entry-header');
+  header.addEventListener('click', (e) => {
+    // 削除ボタンをクリックした場合は開閉させない
+    if (e.target.closest('.test-remove-btn')) return;
+    div.classList.toggle('is-open');
+  });
+
   // ── 削除ボタン ──
-  div.querySelector('.test-remove-btn').addEventListener('click', () => {
+  div.querySelector('.test-remove-btn').addEventListener('click', (e) => {
+    e.stopPropagation(); // 開閉イベントの発火を防ぐ
     const list = document.getElementById('test-list');
     div.remove();
     renumberTestEntries();
@@ -341,15 +384,28 @@ function renumberTestEntries() {
   });
 }
 
+// テスト追加ボタンの処理
 document.getElementById('test-add-btn').addEventListener('click', () => {
-  const list   = document.getElementById('test-list');
+  const list = document.getElementById('test-list');
+  
+  // 既存のすべてのテストエントリーを折りたたむ
+  list.querySelectorAll('.test-entry').forEach(entry => {
+    entry.classList.remove('is-open');
+  });
+
+  // 新しいエントリーを追加（デフォルトで開いている）
   const newIdx = list.querySelectorAll('.test-entry').length;
   list.appendChild(createTestEntryElement(createTestEntry(), newIdx));
+  
+  // スクロール処理
   const panel = document.getElementById('form-panel');
   setTimeout(() => {
     panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
   }, 50);
 });
+
+
+
 
 /* ===========================
    AI診断レポートを生成する
