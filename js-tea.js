@@ -493,15 +493,28 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
 /* ===========================
    診断結果をHTMLに描画する・初期化
 =========================== */
+/* ===========================
+   診断結果をHTMLに描画する・初期化
+=========================== */
 function renderResult(d, formData) {
   const stars  = '★'.repeat(d.overallScore) + '☆'.repeat(5 - d.overallScore);
   const subLine = [formData.grade, formData.subjects]
     .filter(v => v !== '未入力').join(' ／ ');
 
-  const strengthsHTML    = (d.strengths    || []).map(s => `<li>${s}</li>`).join('');
-  const improvementsHTML = (d.improvements || []).map(s => `<li>${s}</li>`).join('');
+  const strengthsHTML    = (d.strengths    || []).map(s => `<li>${escapeHtml(s)}</li>`).join('');
+  const improvementsHTML = (d.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('');
 
   const html = `
+    <!-- 印刷・共有用アクションバー（画面表示時のみ） -->
+    <div class="result-actions no-print">
+      <button type="button" class="action-btn action-btn-primary" id="print-btn">
+        <i class="ti ti-printer"></i> 印刷 / PDF保存
+      </button>
+      <button type="button" class="action-btn" id="copy-all-btn">
+        <i class="ti ti-copy"></i> レポート全体をコピー
+      </button>
+    </div>
+
     <!-- 総合評価 -->
     <div class="result-card card-hero">
       <div class="hero-row">
@@ -514,7 +527,7 @@ function renderResult(d, formData) {
           <div class="score-label">総合評価 ${d.overallScore} / 5</div>
         </div>
       </div>
-      <div class="card-body">${d.overallComment || ''}</div>
+      <div class="card-body">${escapeHtml(d.overallComment || '')}</div>
     </div>
 
     <!-- 今すぐ取り組むべきこと -->
@@ -522,7 +535,7 @@ function renderResult(d, formData) {
       <div class="card-label">
         <i class="ti ti-alert-circle"></i> 今すぐ取り組むべきこと
       </div>
-      <div class="card-body">${d.urgentAction || ''}</div>
+      <div class="card-body">${escapeHtml(d.urgentAction || '')}</div>
     </div>
 
     <!-- 強み・改善点 -->
@@ -540,44 +553,93 @@ function renderResult(d, formData) {
     <!-- 1週間の学習プラン -->
     <div class="result-card card-neutral">
       <div class="card-label"><i class="ti ti-calendar-week"></i> 1週間の推奨学習プラン</div>
-      <div class="card-body">${d.weeklyPlan || ''}</div>
+      <div class="card-body">${escapeHtml(d.weeklyPlan || '')}</div>
     </div>
 
     <!-- 1ヶ月の目標 -->
     <div class="result-card card-neutral">
       <div class="card-label"><i class="ti ti-calendar-month"></i> 1ヶ月の目標と方針</div>
-      <div class="card-body">${d.monthlyPlan || ''}</div>
+      <div class="card-body">${escapeHtml(d.monthlyPlan || '')}</div>
     </div>
 
     <!-- 講師アドバイス -->
     <div class="result-card card-neutral">
       <div class="card-label"><i class="ti ti-bulb"></i> 講師へのアドバイス</div>
-      <div class="card-body">${d.instructorAdvice || ''}</div>
+      <div class="card-body">${escapeHtml(d.instructorAdvice || '')}</div>
     </div>
 
     <!-- 保護者向けコメント -->
     <div class="result-card card-neutral">
       <div class="card-label"><i class="ti ti-mail"></i> 保護者向けコメント文案</div>
-      <div class="parent-block" id="parent-text">${d.parentMessage || ''}</div>
-      <button type="button" class="copy-btn" id="copy-btn">
-        <i class="ti ti-copy"></i> コピー
+      <div class="parent-block" id="parent-text">${escapeHtml(d.parentMessage || '')}</div>
+      <button type="button" class="copy-btn no-print" id="copy-btn">
+        <i class="ti ti-copy"></i> 保護者コメントのみコピー
       </button>
     </div>
   `;
 
   document.getElementById('state-result').innerHTML = html;
 
+  // --- イベントバインド ---
+
+  // 1. 印刷 / PDF保存ボタン
+  document.getElementById('print-btn').addEventListener('click', () => {
+    window.print();
+  });
+
+  // 2. レポート全体テキストコピー
+  document.getElementById('copy-all-btn').addEventListener('click', () => {
+    const fullText = `
+【生徒診断レポート】${formData.name} さん（${subLine}）
+総合評価: ${d.overallScore}/5
+
+■ 総合評価・診断コメント
+${d.overallComment || ''}
+
+■ 今すぐ取り組むべきこと
+${d.urgentAction || ''}
+
+■ 強み
+${(d.strengths || []).map(s => `・${s}`).join('\n')}
+
+■ 改善点
+${(d.improvements || []).map(s => `・${s}`).join('\n')}
+
+■ 1週間の推奨学習プラン
+${d.weeklyPlan || ''}
+
+■ 1ヶ月の目標と方針
+${d.monthlyPlan || ''}
+
+■ 講師へのアドバイス
+${d.instructorAdvice || ''}
+
+■ 保護者向けコメント
+${d.parentMessage || ''}
+`.trim();
+
+    navigator.clipboard.writeText(fullText).then(() => {
+      const btn = document.getElementById('copy-all-btn');
+      btn.innerHTML = '<i class="ti ti-check"></i> レポート全体をコピーしました';
+      setTimeout(() => {
+        btn.innerHTML = '<i class="ti ti-copy"></i> レポート全体をコピー';
+      }, 2000);
+    });
+  });
+
+  // 3. 保護者用コメントコピーボタン
   document.getElementById('copy-btn').addEventListener('click', () => {
     const text = document.getElementById('parent-text').innerText;
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById('copy-btn');
       btn.innerHTML = '<i class="ti ti-check"></i> コピーしました';
       setTimeout(() => {
-        btn.innerHTML = '<i class="ti ti-copy"></i> コピー';
+        btn.innerHTML = '<i class="ti ti-copy"></i> 保護者コメントのみコピー';
       }, 2000);
     });
   });
 }
+
 
 document.getElementById('tab-add-btn').addEventListener('click', addStudent);
 renderTabs();
