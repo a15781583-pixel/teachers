@@ -899,3 +899,49 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===========================
+   生成ボタンのSticky（下部固定）化
+=========================== */
+.gen-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+
+  /* --- Sticky固定用の設定 --- */
+  position: sticky;
+  bottom: 0px; /* パネル下端に固定 */
+  z-index: 10;
+  /* ボタン裏の文字が透けないよう、白いグラデーション影でカバー */
+  box-shadow: 0 -12px 16px rgba(255, 255, 255, 0.9), 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.gen-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 -12px 16px rgba(255, 255, 255, 0.9), 0 6px 16px rgba(37, 99, 235, 0.4);
+  transform: translateY(-1px);
+}
+
+.gen-btn:active {
+  transform: translateY(0);
+}
+
+.gen-btn:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
