@@ -662,16 +662,69 @@ body {
   background: #fff;
 }
 
-/* カードヘッダー（番号 ＋ 削除ボタン） */
+/* ===========================
+   テスト結果エントリー
+=========================== */
+
+/* エントリーカード */
+.test-entry {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  transition: border-color 0.15s;
+}
+
+.test-entry:focus-within {
+  border-color: #93c5fd;
+  background: #fff;
+}
+
+/* カードヘッダー（クリックで開閉） */
 .test-entry-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 4px 0 4px 4px;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-radius: 6px;
 }
 
+.test-entry-header:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* 開いている時だけ下線を引く */
+.test-entry.is-open .test-entry-header {
+  border-bottom-color: #e2e8f0;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-radius: 6px 6px 0 0;
+}
+
+/* 左側のラッパー（アイコン ＋ 番号 ＋ プレビュー） */
+.test-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 開閉アイコン */
+.test-toggle-icon {
+  font-size: 16px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+.test-entry.is-open .test-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* テスト番号 */
 .test-entry-num {
   font-size: 12px;
   font-weight: 600;
@@ -679,6 +732,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .test-entry-num::before {
@@ -688,6 +742,27 @@ body {
   height: 13px;
   background: #1b3a6b;
   border-radius: 2px;
+}
+
+/* 入力内容のプレビュー（折りたたみ時に表示） */
+.test-preview {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 4px;
+}
+.test-entry.is-open .test-preview {
+  display: none; /* 開いている時は非表示 */
+}
+
+/* コンテンツ部分の表示・非表示 */
+.test-entry-content {
+  display: none;
+}
+.test-entry.is-open .test-entry-content {
+  display: block;
 }
 
 /* 削除ボタン */
