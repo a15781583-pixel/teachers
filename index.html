@@ -17,10 +17,26 @@
       <span class="header-title">生徒診断ツール</span>
     </div>
     <div class="header-right">
-      <label for="api-key">APIキー</label>
-      <input type="password" id="api-key" placeholder="AIza..." />
+      <div class="api-key-group">
+        <div class="api-key-top">
+          <label for="api-key">APIキー</label>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-key-link">
+            <i class="ti ti-external-link"></i> APIキーはこちらから
+          </a>
+        </div>
+        <input type="password" id="api-key" placeholder="AIza..." />
+      </div>
     </div>
   </header>
+
+  <!-- タブバー -->
+  <nav class="tab-bar">
+    <div class="tab-list" id="tab-list"></div>
+    <button class="tab-add-btn" id="tab-add-btn" title="生徒を追加">
+      <i class="ti ti-user-plus"></i>
+      <span>生徒を追加</span>
+    </button>
+  </nav>
 
   <!-- メインレイアウト -->
   <main class="layout">
@@ -79,81 +95,45 @@
 
       <h2 class="sec-title">学習状況</h2>
 
+      <!-- ▼▼▼ テスト結果セクション（変更箇所） ▼▼▼ -->
       <div class="field">
-        <label for="f-scores">最近のテスト結果・成績</label>
-        <textarea id="f-scores" placeholder="例：数学 75点、英語 82点（定期テスト）"></textarea>
+        <label>テスト結果</label>
+        <div id="test-list">
+          <!-- JS が動的に生成 -->
+        </div>
+        <button type="button" class="test-add-btn" id="test-add-btn">
+          <i class="ti ti-plus"></i> テストを追加
+        </button>
       </div>
+      <!-- ▲▲▲ テスト結果セクション（変更箇所） ▲▲▲ -->
 
       <div class="field">
-        <label for="f-hw">宿題の提出率</label>
-        <select id="f-hw">
-          <option value="">選択してください</option>
-          <option>ほぼ100%（毎回提出）</option>
-          <option>80%程度（たまに忘れる）</option>
-          <option>50%程度（半分くらい）</option>
-          <option>30%以下（あまり出さない）</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="f-comp">授業の理解度</label>
-        <select id="f-comp">
-          <option value="">選択してください</option>
-          <option>とてもよく理解できている</option>
-          <option>おおむね理解できている</option>
-          <option>半分程度理解できている</option>
-          <option>あまり理解できていない</option>
-          <option>ほとんど理解できていない</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="f-attend">出席率</label>
-        <select id="f-attend">
-          <option value="">選択してください</option>
-          <option>ほぼ100%</option>
-          <option>80%程度</option>
-          <option>60%程度</option>
-          <option>50%以下</option>
-        </select>
+        <label>授業の理解度（10段階）</label>
+        <div class="scale-row">
+          <span class="scale-edge-label">理解不足</span>
+          <div class="scale-group" id="comp-scale">
+            <button class="scale-btn" data-val="1">1</button>
+            <button class="scale-btn" data-val="2">2</button>
+            <button class="scale-btn" data-val="3">3</button>
+            <button class="scale-btn" data-val="4">4</button>
+            <button class="scale-btn" data-val="5">5</button>
+            <button class="scale-btn" data-val="6">6</button>
+            <button class="scale-btn" data-val="7">7</button>
+            <button class="scale-btn" data-val="8">8</button>
+            <button class="scale-btn" data-val="9">9</button>
+            <button class="scale-btn" data-val="10">10</button>
+          </div>
+          <span class="scale-edge-label">完全理解</span>
+        </div>
+        <input type="hidden" id="f-comp" value="">
       </div>
 
       <h2 class="sec-title">学習態度・習慣</h2>
 
       <div class="field">
-        <label for="f-attitude">授業態度</label>
-        <select id="f-attitude">
-          <option value="">選択してください</option>
-          <option>積極的・意欲的</option>
-          <option>真面目・おとなしい</option>
-          <option>普通</option>
-          <option>集中力が続かない</option>
-          <option>やる気が見られない</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="f-study">週の自習時間</label>
-        <select id="f-study">
-          <option value="">選択してください</option>
-          <option>10時間以上</option>
-          <option>5〜10時間</option>
-          <option>3〜5時間</option>
-          <option>1〜3時間</option>
-          <option>ほとんどしていない</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="f-conc">集中力</label>
-        <select id="f-conc">
-          <option value="">選択してください</option>
-          <option>非常に高い</option>
-          <option>高い</option>
-          <option>普通</option>
-          <option>やや低い</option>
-          <option>低い</option>
-        </select>
+        <label for="f-attitude">学習態度・自習状況（講師所見）</label>
+        <textarea id="f-attitude" style="min-height: 80px;"
+          placeholder="例：授業中の集中力は高いが家での自習が少ない。週2〜3回は自習に来ている。積極的に質問するようになってきた。"></textarea>
       </div>
 
       <h2 class="sec-title">目標・課題・メモ</h2>
@@ -166,11 +146,6 @@
       <div class="field">
         <label for="f-concerns">現在の課題・悩み</label>
         <textarea id="f-concerns" placeholder="例：文章題が苦手、英語の読解に時間がかかる"></textarea>
-      </div>
-
-      <div class="field">
-        <label for="f-parent">保護者からのコメント</label>
-        <textarea id="f-parent" placeholder="例：家での勉強習慣をつけてほしい"></textarea>
       </div>
 
       <div class="field">
