@@ -4,12 +4,11 @@
    ※ Google AI Studio で取得した APIキーを使用
    https://aistudio.google.com/app/apikey
 =========================== */
-const GEMINI_MODEL    = 'gemini-2.0-flash';   // ✅ 修正: gemini-3.5-flash は存在しないモデルでした
+const GEMINI_MODEL    = 'gemini-2.0-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 /* ===========================
    フォームフィールド一覧
-   ※ f-scores は削除（テストエントリーで管理）
 =========================== */
 const FIELD_IDS = [
   'f-name', 'f-grade', 'f-period',
@@ -19,35 +18,12 @@ const FIELD_IDS = [
 ];
 
 /* ===========================
-   テスト種類・実施時期の定義
+   テスト種類の入力サジェスト候補
 =========================== */
-const TEST_TYPES = ['定期テスト', '実力テスト', '模擬試験', '検定', '入試', 'その他'];
-
-const PERIOD_OPTIONS_BY_TYPE = {
-  '定期テスト': [
-    '前期中間', '前期期末', '後期中間', '後期期末',
-    '1学期中間', '1学期期末', '2学期中間', '2学期期末', '3学期末',
-    'カスタム',
-  ],
-  '実力テスト': [
-    '4月', '5月', '6月', '7月', '8月', '9月',
-    '10月', '11月', '12月', '1月', '2月', '3月',
-    'カスタム',
-  ],
-  '模擬試験': ['第1回', '第2回', '第3回', '第4回', '第5回', 'カスタム'],
-  '検定':     ['第1回', '第2回', '第3回', 'カスタム'],
-  '入試':     ['推薦', '一般', 'カスタム'],
-  'その他':   ['カスタム'],
-};
-
-const DEFAULT_PERIOD_OPTIONS = [
-  '前期中間', '前期期末', '後期中間', '後期期末',
-  '第1回', '第2回', '第3回', 'カスタム',
+const TEST_TYPE_SUGGESTIONS = [
+  '定期テスト', '実力テスト', '全統記述模試', '全統共通テスト模試', 
+  '進研模試', '駿台模試', '英検', '漢検', '入試'
 ];
-
-function getPeriodOptions(type) {
-  return PERIOD_OPTIONS_BY_TYPE[type] || DEFAULT_PERIOD_OPTIONS;
-}
 
 /* ===========================
    生徒データ管理
@@ -57,7 +33,8 @@ let currentIndex   = 0;
 let students       = [createStudent()];
 
 function createTestEntry() {
-  return { type: '', period: '', customPeriod: '', scores: '' };
+  // type(種類)、grade(対応学年)、date(実施日)、scores(点数) に変更
+  return { type: '', grade: '', date: '', scores: '' };
 }
 
 function createStudent() {
@@ -89,29 +66,24 @@ function saveCurrentForm() {
 }
 
 function restoreForm(s) {
-  // テキスト・セレクトフィールドを復元
   FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = s.data[id] || '';
   });
 
-  // 10段階スケールのUI復元
   updateScaleUI(s.data['f-comp'] || '');
 
-  // 科目チップを復元
   selectedSubjects.clear();
   (s.data.subjects || []).forEach(v => selectedSubjects.add(v));
   document.querySelectorAll('#subjects .chip').forEach(chip => {
     chip.classList.toggle('selected', selectedSubjects.has(chip.dataset.val));
   });
 
-  // テストエントリーを復元
   const tests = (s.data.tests && s.data.tests.length > 0)
     ? s.data.tests
     : [createTestEntry()];
   renderTestList(tests);
 
-  // 診断結果パネルを復元
   if (s.result) {
     renderResult(s.result, buildFormData());
     showState('state-result');
@@ -121,12 +93,11 @@ function restoreForm(s) {
 }
 
 /* ===========================
-   タブ描画
+   タブ描画・操作・ユーティリティ等は変更なし
 =========================== */
 function renderTabs() {
   const list = document.getElementById('tab-list');
   list.innerHTML = '';
-
   students.forEach((s, i) => {
     const tab = document.createElement('button');
     tab.className = 'tab-item' + (i === currentIndex ? ' active' : '');
@@ -139,14 +110,10 @@ function renderTabs() {
         ? `<span class="tab-close" data-idx="${i}" title="削除"><i class="ti ti-x"></i></span>`
         : ''}
     `;
-
-    // タブ本体クリック → 切り替え
     tab.addEventListener('click', e => {
       if (e.target.closest('.tab-close')) return;
       switchTab(i);
     });
-
-    // × ボタンクリック → 削除
     const closeBtn = tab.querySelector('.tab-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', e => {
@@ -154,20 +121,14 @@ function renderTabs() {
         removeStudent(i);
       });
     }
-
     list.appendChild(tab);
   });
-
-  // アクティブタブが見えるようにスクロール
   const activeTab = list.querySelector('.tab-item.active');
   if (activeTab) {
     activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 }
 
-/* ===========================
-   タブ操作
-=========================== */
 function switchTab(idx) {
   saveCurrentForm();
   currentIndex = idx;
@@ -181,8 +142,6 @@ function addStudent() {
   currentIndex = students.length - 1;
   renderTabs();
   restoreForm(students[currentIndex]);
-
-  // 追加後にリストを末尾へスクロール
   const list = document.getElementById('tab-list');
   setTimeout(() => { list.scrollLeft = list.scrollWidth; }, 50);
 }
@@ -195,9 +154,6 @@ function removeStudent(idx) {
   restoreForm(students[currentIndex]);
 }
 
-/* ===========================
-   ユーティリティ
-=========================== */
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -206,9 +162,6 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-/* ===========================
-   エラー表示ヘルパー（✅ 追加: alert の代替）
-=========================== */
 function showInlineError(message) {
   const errEl = document.getElementById('state-error');
   errEl.innerHTML = `
@@ -220,9 +173,6 @@ function showInlineError(message) {
   showState('state-error');
 }
 
-/* ===========================
-   10段階評価スケール
-=========================== */
 function updateScaleUI(val) {
   document.querySelectorAll('#comp-scale .scale-btn').forEach(btn => {
     btn.classList.toggle('selected', btn.dataset.val === String(val));
@@ -237,11 +187,7 @@ document.querySelectorAll('#comp-scale .scale-btn').forEach(btn => {
   });
 });
 
-/* ===========================
-   科目チップの選択
-=========================== */
 const selectedSubjects = new Set();
-
 document.querySelectorAll('#subjects .chip').forEach(chip => {
   chip.addEventListener('click', () => {
     const val = chip.dataset.val;
@@ -255,22 +201,15 @@ document.querySelectorAll('#subjects .chip').forEach(chip => {
   });
 });
 
-/* ===========================
-   生徒名変更でタブ名をリアルタイム更新
-=========================== */
 document.getElementById('f-name').addEventListener('input', e => {
   const name = e.target.value.trim();
   students[currentIndex].tabName = name || students[currentIndex].defaultName;
-  // 再描画せずラベルだけ更新（スクロール位置を保持）
   const labels = document.querySelectorAll('#tab-list .tab-label');
   if (labels[currentIndex]) {
     labels[currentIndex].textContent = students[currentIndex].tabName;
   }
 });
 
-/* ===========================
-   フォーム値を収集するヘルパー
-=========================== */
 function getVal(id) {
   const el = document.getElementById(id);
   return el ? el.value.trim() : '';
@@ -288,11 +227,11 @@ function buildFormData() {
     scoresText = filledTests.map((t, i) => {
       const parts  = [];
       if (t.type) parts.push(t.type);
-      const period = t.period === 'カスタム' ? (t.customPeriod || '') : t.period;
-      if (period) parts.push(period);
-      const label  = parts.length > 0 ? `[${parts.join(' ')}]` : `[テスト${i + 1}]`;
-      return t.scores ? `${label} ${t.scores}` : label;
-    }).join('\n');
+      if (t.grade) parts.push(`対象: ${t.grade}`);
+      if (t.date) parts.push(`実施日: ${t.date}`);
+      const label  = parts.length > 0 ? `[${parts.join(' / ')}]` : `[テスト${i + 1}]`;
+      return t.scores ? `${label}\n${t.scores}` : label;
+    }).join('\n\n');
   }
 
   return {
@@ -309,9 +248,6 @@ function buildFormData() {
   };
 }
 
-/* ===========================
-   状態切り替え
-=========================== */
 function showState(id) {
   ['state-empty', 'state-loading', 'state-error', 'state-result'].forEach(s => {
     document.getElementById(s).style.display = (s === id) ? '' : 'none';
@@ -322,7 +258,6 @@ function showState(id) {
    テストエントリー管理
 =========================== */
 
-/** テストリスト全体を再描画 */
 function renderTestList(tests) {
   const list = document.getElementById('test-list');
   list.innerHTML = '';
@@ -334,10 +269,7 @@ function createTestEntryElement(test, idx) {
   const div      = document.createElement('div');
   div.className  = 'test-entry';
 
-  const periodOpts = getPeriodOptions(test.type);
-  const isCustom   = test.period === 'カスタム';
-
-  // ✅ 修正: chip ボタンに type="button" を追加（フォーム誤送信防止）
+  // 自由入力(サジェスト付き)、学年選択、カレンダー(date)を実装
   div.innerHTML = `
     <div class="test-entry-header">
       <span class="test-entry-num">テスト ${idx + 1}</span>
@@ -348,60 +280,32 @@ function createTestEntryElement(test, idx) {
 
     <div class="test-field">
       <label class="test-field-label">試験の種類</label>
-      <div class="chip-group test-type-chips">
-        ${TEST_TYPES.map(t =>
-          `<button type="button" class="chip${t === test.type ? ' selected' : ''}" data-val="${escapeHtml(t)}">${escapeHtml(t)}</button>`
-        ).join('')}
-      </div>
+      <input type="text" class="test-type-input" placeholder="例：全統記述模試、定期テスト" value="${escapeHtml(test.type || '')}" list="test-type-list-${idx}">
+      <datalist id="test-type-list-${idx}">
+        ${TEST_TYPE_SUGGESTIONS.map(t => `<option value="${escapeHtml(t)}"></option>`).join('')}
+      </datalist>
     </div>
 
     <div class="test-field">
-      <label class="test-field-label">実施時期</label>
-      <select class="test-period-select">
-        <option value="">選択してください</option>
-        ${periodOpts.map(p =>
-          `<option value="${escapeHtml(p)}"${p === test.period ? ' selected' : ''}>${escapeHtml(p)}</option>`
+      <label class="test-field-label">模試対応学年</label>
+      <select class="test-grade-select">
+        <option value="">選択しない</option>
+        ${['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3','高卒・浪人'].map(g => 
+          `<option value="${g}" ${g === test.grade ? 'selected' : ''}>${g}</option>`
         ).join('')}
       </select>
-      <input
-        type="text"
-        class="test-period-custom"
-        placeholder="例：2025年6月"
-        value="${escapeHtml(test.customPeriod || '')}"
-        style="display:${isCustom ? '' : 'none'}"
-      >
+    </div>
+
+    <div class="test-field">
+      <label class="test-field-label">実施日</label>
+      <input type="date" class="test-date-input" value="${escapeHtml(test.date || '')}">
     </div>
 
     <div class="test-field">
       <label class="test-field-label">点数・結果</label>
-      <textarea class="test-scores" placeholder="例：数学 75点、英語 82点">${escapeHtml(test.scores || '')}</textarea>
+      <textarea class="test-scores" placeholder="例：数学 75点、偏差値 55.2">${escapeHtml(test.scores || '')}</textarea>
     </div>
   `;
-
-  // ── 試験の種類チップ ──
-  div.querySelectorAll('.test-type-chips .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      div.querySelectorAll('.test-type-chips .chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-
-      // 実施時期のオプションを種類に合わせて更新
-      const newOpts = getPeriodOptions(chip.dataset.val);
-      const sel     = div.querySelector('.test-period-select');
-      sel.innerHTML = `<option value="">選択してください</option>` +
-        newOpts.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-
-      // カスタム入力を非表示にリセット
-      div.querySelector('.test-period-custom').style.display = 'none';
-      div.querySelector('.test-period-custom').value = '';
-    });
-  });
-
-  // ── 実施時期セレクト ──
-  div.querySelector('.test-period-select').addEventListener('change', function () {
-    const customEl = div.querySelector('.test-period-custom');
-    customEl.style.display = this.value === 'カスタム' ? '' : 'none';
-    if (this.value !== 'カスタム') customEl.value = '';
-  });
 
   // ── 削除ボタン ──
   div.querySelector('.test-remove-btn').addEventListener('click', () => {
@@ -421,17 +325,15 @@ function createTestEntryElement(test, idx) {
 function collectTestEntries() {
   const entries = [];
   document.querySelectorAll('#test-list .test-entry').forEach(entryEl => {
-    const typeChip     = entryEl.querySelector('.test-type-chips .chip.selected');
-    const type         = typeChip ? typeChip.dataset.val : '';
-    const period       = entryEl.querySelector('.test-period-select')?.value || '';
-    const customPeriod = entryEl.querySelector('.test-period-custom')?.value.trim() || '';
-    const scores       = entryEl.querySelector('.test-scores')?.value.trim() || '';
-    entries.push({ type, period, customPeriod, scores });
+    const type   = entryEl.querySelector('.test-type-input')?.value.trim() || '';
+    const grade  = entryEl.querySelector('.test-grade-select')?.value || '';
+    const date   = entryEl.querySelector('.test-date-input')?.value || '';
+    const scores = entryEl.querySelector('.test-scores')?.value.trim() || '';
+    entries.push({ type, grade, date, scores });
   });
   return entries;
 }
 
-/** エントリーを削除した後に番号を振り直す */
 function renumberTestEntries() {
   document.querySelectorAll('#test-list .test-entry').forEach((el, i) => {
     const numEl = el.querySelector('.test-entry-num');
@@ -439,13 +341,10 @@ function renumberTestEntries() {
   });
 }
 
-// テスト追加ボタン
 document.getElementById('test-add-btn').addEventListener('click', () => {
   const list   = document.getElementById('test-list');
   const newIdx = list.querySelectorAll('.test-entry').length;
   list.appendChild(createTestEntryElement(createTestEntry(), newIdx));
-
-  // 追加したエントリーが見えるようにスクロール
   const panel = document.getElementById('form-panel');
   setTimeout(() => {
     panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
@@ -456,7 +355,6 @@ document.getElementById('test-add-btn').addEventListener('click', () => {
    AI診断レポートを生成する
 =========================== */
 document.getElementById('gen-btn').addEventListener('click', async () => {
-  // ✅ 修正: alert() の代わりにページ内エラー表示（alert はブラウザ環境によってブロックされる場合がある）
   const apiKey = document.getElementById('api-key')?.value.trim();
   if (!apiKey) {
     showInlineError(
@@ -523,9 +421,7 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
     const clean    = rawText.replace(/```json|```/g, '').trim();
     const result   = JSON.parse(clean);
 
-    // 結果をその生徒に保存
     students[currentIndex].result = result;
-
     renderResult(result, formData);
     showState('state-result');
 
@@ -534,7 +430,6 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
       '診断の生成に失敗しました。APIキーとネットワーク接続を確認してください。<br>' +
       `<small>${escapeHtml(err.message)}</small>`
     );
-
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-sparkles"></i> AI診断レポートを生成する';
@@ -542,7 +437,7 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
 });
 
 /* ===========================
-   診断結果をHTMLに描画する
+   診断結果をHTMLに描画する・初期化
 =========================== */
 function renderResult(d, formData) {
   const stars  = '★'.repeat(d.overallScore) + '☆'.repeat(5 - d.overallScore);
@@ -630,9 +525,6 @@ function renderResult(d, formData) {
   });
 }
 
-/* ===========================
-   初期化
-=========================== */
 document.getElementById('tab-add-btn').addEventListener('click', addStudent);
 renderTabs();
 restoreForm(students[currentIndex]);
