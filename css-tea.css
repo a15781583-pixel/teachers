@@ -974,3 +974,108 @@ body {
   color: #64748b;
   border: 1px solid #cbd5e1;
 }
+
+/* ===========================
+   アクションボタン（画面表示用）
+=========================== */
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Noto Sans JP', sans-serif;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.action-btn-primary {
+  background: #1b3a6b;
+  border-color: #1b3a6b;
+  color: #ffffff;
+}
+
+.action-btn-primary:hover {
+  background: #14305a;
+  border-color: #14305a;
+  color: #ffffff;
+}
+
+/* ===========================
+   印刷専用スタイル (@media print)
+=========================== */
+@media print {
+  /* 1. 印刷に不要な要素をすべて非表示 */
+  .header,
+  .tab-bar,
+  #form-panel,
+  .no-print,
+  .gen-btn {
+    display: none !important;
+  }
+
+  /* 2. ページ全体のレイアウトを印刷用に解放 */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  .layout {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .panel {
+    border: none !important;
+    padding: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  #result-panel,
+  #state-result {
+    display: block !important;
+  }
+
+  /* 3. 印刷カード枠の調整と途切れ（改ページ）防止 */
+  .result-card {
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    break-inside: avoid; /* カードの途中で改ページされるのを防ぐ */
+    page-break-inside: avoid;
+    margin-bottom: 12px !important;
+    background: #ffffff !important;
+  }
+
+  /* カラーバリアント背景色の印刷維持（背景グラフィック印刷がONの場合） */
+  .card-hero        { background: #f0f7ff !important; border-color: #bfdbfe !important; }
+  .card-urgent      { background: #fffbeb !important; border-color: #fde68a !important; }
+  .card-strengths   { background: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+  .card-improvements{ background: #fff1f2 !important; border-color: #fecdd3 !important; }
+
+  .parent-block {
+    background: #f8fafc !important;
+    border-left: 3px solid #64748b !important;
+  }
+}
