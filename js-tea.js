@@ -471,14 +471,11 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
       throw new Error(msg);
     }
 
-    const data     = await response.json();
-    const rawText  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean    = rawText.replace(/```json|```/g, '').trim();
-        // 1. 不要なマークダウン記号（```json や ```）を念のため完全に除去
-    clean = clean
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim();
+    const data    = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // 1. マークダウン記号（```json や ```）を除去してクリーンな文字列を作成
+    const clean   = rawText.replace(/```json|```/g, '').trim();
 
     // 2. エラーハンドリング付きでパース
     let result;
