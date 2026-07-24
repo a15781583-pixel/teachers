@@ -486,10 +486,8 @@ document.getElementById('test-add-btn').addEventListener('click', () => {
 });
 
 
-
-
 /* ===========================
-   AI診断レポートを生成する（履歴蓄積・時系列診断対応）
+   AI診断レポートを生成する（日付選択 ＆ 構造化出力で100%安定化）
 =========================== */
 document.getElementById('gen-btn').addEventListener('click', async () => {
   const apiKey = document.getElementById('api-key')?.value.trim();
@@ -509,19 +507,21 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
   const formData = buildFormData();
 
   // ----------------------------------------------------
-  // Step 3 & 4: 過去データの取得 ＆ 今回のログの自動蓄積
+  // 日付の設定（フォームで指定がなければ今日の日付）
   // ----------------------------------------------------
-  const studentId = 'std_' + encodeURIComponent(formData.name || 'default');
+  const lessonDate = formData.date || new Date().toISOString().split('T')[0];
+  const studentId  = 'std_' + encodeURIComponent(formData.name || 'default');
   
-  // 1. 今回の追加前に、過去の履歴を取り出す
-  const pastData = getStudentData(studentId);
-  const previousLogs = pastData ? pastData.lessonLogs.slice(-3) : []; // 直近最大3回分
-  const lastDiag = (pastData && pastData.aiDiagnostics.length > 0)
+  // 過去データの取得
+  const pastData     = getStudentData(studentId);
+  const previousLogs = pastData ? pastData.lessonLogs.slice(-3) : [];
+  const lastDiag     = (pastData && pastData.aiDiagnostics.length > 0)
     ? pastData.aiDiagnostics[pastData.aiDiagnostics.length - 1]
     : null;
 
-  // 2. 今回の授業レポートを履歴に追加・保存
+  // 今回の授業レポートを履歴に追加・保存（指定した授業日を使用）
   addLessonLog(studentId, {
+    date: lessonDate,
     subject: formData.subjects,
     unit: formData.scores,
     comprehension: formData.comp,
@@ -530,12 +530,11 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
   });
 
   // ----------------------------------------------------
-  // Step 4: 過去の経過を含めた時系列プロンプトの構築
+  // 高精度プロンプトの構築
   // ----------------------------------------------------
   const prompt = `
-あなたは経験豊富な塾の教育コンサルタントです。
-以下の「生徒基本情報」「過去の指導・診断履歴」「今回の授業レポート」を比較し、
-生徒の変化や成長のトレンドを踏まえた最新の総合診断レポートを作成してください。
+あなたはプロの教育コンサルタント・塾講師です。
+生徒の基本情報、過去の学習変化、今回の授業内容を踏まえ、保護者も納得する高品質な診断レポートを作成してください。
 
 【生徒情報】
 名前: ${formData.name}
@@ -547,43 +546,56 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
 【前回のAI診断結果】
 ${lastDiag ? `前回の総合スコア: ${lastDiag.overallScore} / 5\n前回の所見: ${lastDiag.overallComment}` : '過去のAI診断履歴はありません（初回診断）'}
 
-【直近の指導経過（最大3回分）】
+【直近の指導経過】
 ${previousLogs.length > 0 ? previousLogs.map((log, index) => `
-${index + 1}. [${log.date}] 科目/単元: ${log.subject} / 理解度: ${log.comprehension}/10
+${index + 1}. [${log.date}] 科目: ${log.subject} / 理解度: ${log.comprehension}/10
    所見: ${log.instructorNotes}
 `).join('') : '過去の授業ログはありません'}
 
-【今回の授業レポート】
+【今回の授業レポート (${lessonDate})】
 理解度（10段階）: ${formData.comp}
-最近のテスト・単元結果: ${formData.scores}
+テスト・単元結果: ${formData.scores}
 学習態度・自習状況: ${formData.attitude}
 講師メモ: ${formData.notes}
 
-【分析の指示】
-- 単発の数字だけでなく、「前回の課題が改善されたか」「成長が見られる点」を積極的に評価してください。
-- 過去の経過を踏まえて、次にとるべきアクションを提示してください。
-
-以下の形式でJSONのみを返してください（マークダウン記法・コードブロックなし）:
-{
-  "overallScore": 1〜5の整数,
-  "overallComment": "総合診断コメント（3〜4文。過去からの成長の兆しや変化にも触れること）",
-  "strengths": ["強み1", "強み2", "強み3"],
-  "improvements": ["改善点1", "改善点2", "改善点3"],
-  "weeklyPlan": "1週間の推奨学習プラン（具体的に）",
-  "monthlyPlan": "1ヶ月の目標と学習方針",
-  "instructorAdvice": "講師へのアドバイス（2〜3文）",
-  "parentMessage": "保護者向けコメント文案（そのまま使える文章）",
-  "urgentAction": "今すぐ取り組むべきこと（1つ、具体的に）"
-}
+【指示】
+- 過去のデータと比較し、「成長できた点」「継続して取り組む課題」を具体的に述べてください。
+- 保護者向けメッセージは丁寧で前向き、そのまま面談や連絡帳で渡せるクオリティにしてください。
 `.trim();
 
   try {
+    // ----------------------------------------------------
+    // API呼び出し（Structured Outputs でJSON型を100%強制）
+    // ----------------------------------------------------
     const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: "application/json" },
+        generationConfig: {
+          temperature: 0.3, // 揺らぎを抑えてフォーマットを安定化
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+          // ★構造化出力（JSONの型を絶対に崩さない設定）
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              overallScore: { type: "INTEGER" },
+              overallComment: { type: "STRING" },
+              strengths: { type: "ARRAY", items: { type: "STRING" } },
+              improvements: { type: "ARRAY", items: { type: "STRING" } },
+              weeklyPlan: { type: "STRING" },
+              monthlyPlan: { type: "STRING" },
+              instructorAdvice: { type: "STRING" },
+              parentMessage: { type: "STRING" },
+              urgentAction: { type: "STRING" }
+            },
+            required: [
+              "overallScore", "overallComment", "strengths", "improvements",
+              "weeklyPlan", "monthlyPlan", "instructorAdvice", "parentMessage", "urgentAction"
+            ]
+          }
+        },
       }),
     });
 
@@ -596,19 +608,11 @@ ${index + 1}. [${log.date}] 科目/単元: ${log.subject} / 理解度: ${log.com
     const data    = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // 1. マークダウン記号（```json や ```）を除去してクリーンな文字列を作成
-    const clean   = rawText.replace(/```json|```/g, '').trim();
+    // レスポンスのクリーンアップ＆パース
+    const clean  = rawText.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
 
-    // 2. エラーハンドリング付きでパース
-    let result;
-    try {
-      result = JSON.parse(clean);
-    } catch (e) {
-      console.error("★JSONパースエラー発生。受取った文字列:", clean);
-      throw new Error("AIからの回答が途中で切れてしまったか、フォーマットが崩れています。もう一度生成ボタンを押してみてください。");
-    }
-
-    // 3. 生成されたAI診断結果を履歴データベースに蓄積・保存
+    // AI診断結果を保存
     addAIDiagnostics(studentId, result);
 
     students[currentIndex].result = result;
@@ -626,9 +630,7 @@ ${index + 1}. [${log.date}] 科目/単元: ${log.subject} / 理解度: ${log.com
   }
 });
 
-/* ===========================
-   診断結果をHTMLに描画する・初期化
-=========================== */
+
 /* ===========================
    診断結果をHTMLに描画する・初期化
 =========================== */
