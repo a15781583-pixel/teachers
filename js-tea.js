@@ -489,7 +489,7 @@ document.getElementById('test-add-btn').addEventListener('click', () => {
 
 
 /* ===========================
-   AI診断レポートを生成する
+   AI診断レポートを生成する（履歴蓄積・時系列診断対応）
 =========================== */
 document.getElementById('gen-btn').addEventListener('click', async () => {
   const apiKey = document.getElementById('api-key')?.value.trim();
@@ -508,24 +508,65 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
 
   const formData = buildFormData();
 
+  // ----------------------------------------------------
+  // Step 3 & 4: 過去データの取得 ＆ 今回のログの自動蓄積
+  // ----------------------------------------------------
+  const studentId = 'std_' + encodeURIComponent(formData.name || 'default');
+  
+  // 1. 今回の追加前に、過去の履歴を取り出す
+  const pastData = getStudentData(studentId);
+  const previousLogs = pastData ? pastData.lessonLogs.slice(-3) : []; // 直近最大3回分
+  const lastDiag = (pastData && pastData.aiDiagnostics.length > 0)
+    ? pastData.aiDiagnostics[pastData.aiDiagnostics.length - 1]
+    : null;
+
+  // 2. 今回の授業レポートを履歴に追加・保存
+  addLessonLog(studentId, {
+    subject: formData.subjects,
+    unit: formData.scores,
+    comprehension: formData.comp,
+    attitude: formData.attitude,
+    instructorNotes: formData.notes
+  });
+
+  // ----------------------------------------------------
+  // Step 4: 過去の経過を含めた時系列プロンプトの構築
+  // ----------------------------------------------------
   const prompt = `
-あなたは経験豊富な塾の教育コンサルタントです。以下の生徒情報を基に総合的な診断レポートを作成してください。
+あなたは経験豊富な塾の教育コンサルタントです。
+以下の「生徒基本情報」「過去の指導・診断履歴」「今回の授業レポート」を比較し、
+生徒の変化や成長のトレンドを踏まえた最新の総合診断レポートを作成してください。
 
 【生徒情報】
 名前: ${formData.name}
 学年: ${formData.grade}
 担当科目: ${formData.subjects}
-最近のテスト結果: ${formData.scores}
-授業の理解度（10段階）: ${formData.comp}
-学習態度・自習状況（講師所見）: ${formData.attitude}
 目標: ${formData.goal}
 現在の課題: ${formData.concerns}
+
+【前回のAI診断結果】
+${lastDiag ? `前回の総合スコア: ${lastDiag.overallScore} / 5\n前回の所見: ${lastDiag.overallComment}` : '過去のAI診断履歴はありません（初回診断）'}
+
+【直近の指導経過（最大3回分）】
+${previousLogs.length > 0 ? previousLogs.map((log, index) => `
+${index + 1}. [${log.date}] 科目/単元: ${log.subject} / 理解度: ${log.comprehension}/10
+   所見: ${log.instructorNotes}
+`).join('') : '過去の授業ログはありません'}
+
+【今回の授業レポート】
+理解度（10段階）: ${formData.comp}
+最近のテスト・単元結果: ${formData.scores}
+学習態度・自習状況: ${formData.attitude}
 講師メモ: ${formData.notes}
+
+【分析の指示】
+- 単発の数字だけでなく、「前回の課題が改善されたか」「成長が見られる点」を積極的に評価してください。
+- 過去の経過を踏まえて、次にとるべきアクションを提示してください。
 
 以下の形式でJSONのみを返してください（マークダウン記法・コードブロックなし）:
 {
   "overallScore": 1〜5の整数,
-  "overallComment": "総合診断コメント（3〜4文）",
+  "overallComment": "総合診断コメント（3〜4文。過去からの成長の兆しや変化にも触れること）",
   "strengths": ["強み1", "強み2", "強み3"],
   "improvements": ["改善点1", "改善点2", "改善点3"],
   "weeklyPlan": "1週間の推奨学習プラン（具体的に）",
@@ -566,6 +607,9 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
       console.error("★JSONパースエラー発生。受取った文字列:", clean);
       throw new Error("AIからの回答が途中で切れてしまったか、フォーマットが崩れています。もう一度生成ボタンを押してみてください。");
     }
+
+    // 3. 生成されたAI診断結果を履歴データベースに蓄積・保存
+    addAIDiagnostics(studentId, result);
 
     students[currentIndex].result = result;
     renderResult(result, formData);
