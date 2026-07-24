@@ -1,4 +1,85 @@
 /* ===========================
+   Step 2: localStorage データ管理関数
+=========================== */
+
+// 1. 生徒データの読み込み（なければ初期データを生成）
+function getStudentData(studentId) {
+  const key = `student_data_${studentId}`;
+  const jsonStr = localStorage.getItem(key);
+
+  if (!jsonStr) {
+    // データが存在しない場合の初期オブジェクト構造
+    return {
+      studentId: studentId,
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+      basicInfo: {
+        name: '',
+        grade: '',
+        subjects: [],
+        goal: '',
+        initialConcerns: ''
+      },
+      lessonLogs: [],
+      aiDiagnostics: []
+    };
+  }
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error("データのパースエラー:", e);
+    return null;
+  }
+}
+
+// 2. 生徒データの保存
+function saveStudentData(studentData) {
+  if (!studentData || !studentData.studentId) return;
+  
+  // 最終更新日を更新
+  studentData.updatedAt = new Date().toISOString().split('T')[0];
+  
+  const key = `student_data_${studentData.studentId}`;
+  localStorage.setItem(key, JSON.stringify(studentData));
+}
+
+// 3. 授業ログ（日々の指導レポート）を追加して保存する関数
+function addLessonLog(studentId, logData) {
+  const data = getStudentData(studentId);
+  
+  const newLog = {
+    logId: `log_${Date.now()}`,
+    date: logData.date || new Date().toISOString().split('T')[0],
+    subject: logData.subject || '',
+    unit: logData.unit || '',
+    comprehension: Number(logData.comprehension) || 5,
+    attitude: logData.attitude || '',
+    instructorNotes: logData.instructorNotes || '',
+    homeworkStatus: logData.homeworkStatus || ''
+  };
+
+  data.lessonLogs.push(newLog);
+  saveStudentData(data);
+  return data;
+}
+
+// 4. 生成されたAI診断結果を履歴に追加して保存する関数
+function addAIDiagnostics(studentId, aiResult) {
+  const data = getStudentData(studentId);
+  
+  const newDiag = {
+    diagId: `diag_${Date.now()}`,
+    date: new Date().toISOString().split('T')[0],
+    ...aiResult
+  };
+
+  data.aiDiagnostics.push(newDiag);
+  saveStudentData(data);
+  return data;
+}
+
+/* ===========================
    使用モデル
    gemini-3.5-flash（無料枠あり）
    ※ Google AI Studio で取得した APIキーを使用
