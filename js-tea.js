@@ -1,11 +1,12 @@
 /* ===========================
    使用モデル
-   gemini-2.0-flash（無料枠あり）
+   gemini-3.5-flash（無料枠あり）
    ※ Google AI Studio で取得した APIキーを使用
    https://aistudio.google.com/app/apikey
 =========================== */
 const GEMINI_MODEL    = 'gemini-3.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
 
 /* ===========================
    フォームフィールド一覧
@@ -460,7 +461,7 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: "application/json" },
       }),
     });
 
@@ -473,7 +474,20 @@ document.getElementById('gen-btn').addEventListener('click', async () => {
     const data     = await response.json();
     const rawText  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const clean    = rawText.replace(/```json|```/g, '').trim();
-    const result   = JSON.parse(clean);
+        // 1. 不要なマークダウン記号（```json や ```）を念のため完全に除去
+    clean = clean
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+
+    // 2. エラーハンドリング付きでパース
+    let result;
+    try {
+      result = JSON.parse(clean);
+    } catch (e) {
+      console.error("★JSONパースエラー発生。受取った文字列:", clean);
+      throw new Error("AIからの回答が途中で切れてしまったか、フォーマットが崩れています。もう一度生成ボタンを押してみてください。");
+    }
 
     students[currentIndex].result = result;
     renderResult(result, formData);
